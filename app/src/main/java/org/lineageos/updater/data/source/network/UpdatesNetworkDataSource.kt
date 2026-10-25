@@ -29,9 +29,15 @@ class UpdatesNetworkDataSource(private val context: Context) {
         }
 
     private val client = OkHttpClient.Builder()
-        .callTimeout(10, TimeUnit.SECONDS)
-        .followRedirects(false)
+        .callTimeout(15, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .followSslRedirects(true)
         .build()
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+    }
 
     fun fetchUpdates(): List<NetworkUpdate> {
         val request = Request.Builder()
@@ -44,8 +50,22 @@ class UpdatesNetworkDataSource(private val context: Context) {
             }
 
             response.body?.string() ?: throw IOException("Empty response body")
-        }
+        }.trim()
 
-        return Json.decodeFromString<List<NetworkUpdate>>(responseBody)
+        return if (responseBody.startsWith("{")) {
+            try {
+                json.decodeFromString<InfinityResponse>(responseBody)
+                    .toNetworkUpdates(DeviceInfoUtils.releaseType)
+            } catch (e: Exception) {
+                json.decodeFromString<List<NetworkUpdate>>(responseBody)
+            }
+        } else {
+            try {
+                json.decodeFromString<List<NetworkUpdate>>(responseBody)
+            } catch (e: Exception) {
+                json.decodeFromString<InfinityResponse>(responseBody)
+                    .toNetworkUpdates(DeviceInfoUtils.releaseType)
+            }
+        }
     }
 }

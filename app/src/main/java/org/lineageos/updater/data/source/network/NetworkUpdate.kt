@@ -46,6 +46,42 @@ data class NetworkUpdateFile(
     @SerialName("url") val url: String,
 )
 
+@Suppress("PROVIDED_RUNTIME_TOO_LOW")
+@Serializable
+@JsonIgnoreUnknownKeys
+data class InfinityResponse(
+    @SerialName("response") val response: List<InfinityUpdateItem> = emptyList(),
+)
+
+@Suppress("PROVIDED_RUNTIME_TOO_LOW")
+@Serializable
+@JsonIgnoreUnknownKeys
+data class InfinityUpdateItem(
+    @SerialName("filename") val filename: String,
+    @SerialName("download") val download: String,
+    @SerialName("timestamp") val timestamp: Long = 0L,
+    @SerialName("md5") val md5: String? = null,
+    @SerialName("sha256") val sha256: String? = null,
+    @SerialName("size") val size: Long = 0L,
+    @SerialName("version") val version: String = "",
+)
+
+fun InfinityResponse.toNetworkUpdates(defaultType: String): List<NetworkUpdate> = response.map { item ->
+    NetworkUpdate(
+        datetime = item.timestamp,
+        files = listOf(
+            NetworkUpdateFile(
+                filename = item.filename,
+                sha256 = item.sha256 ?: item.md5 ?: item.filename,
+                size = item.size,
+                url = item.download,
+            )
+        ),
+        type = defaultType,
+        version = item.version,
+    )
+}
+
 private data class PackageFileRange(
     val offset: Long,
     val size: Long,

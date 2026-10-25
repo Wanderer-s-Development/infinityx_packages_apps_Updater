@@ -34,19 +34,28 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     val buildDateTimestamp: Long = SystemProperties.getLong(PROP_BUILD_DATE, 0)
 
     @JvmStatic
-    val buildVersion: String = SystemProperties.get(PROP_BUILD_VERSION, "")
+    val buildVersion: String = SystemProperties.get("ro.infinity.version").ifEmpty {
+        SystemProperties.get(PROP_BUILD_VERSION, "")
+    }
 
     @JvmStatic
     val buildVersionIncremental: String = SystemProperties.get(PROP_BUILD_VERSION_INCREMENTAL, "")
 
     @JvmStatic
-    val device: String = SystemProperties.get(PROP_NEXT_DEVICE, SystemProperties.get(PROP_DEVICE))
+    val device: String = SystemProperties.get(
+        PROP_NEXT_DEVICE,
+        SystemProperties.get("ro.infinity.device").ifEmpty {
+            SystemProperties.get(PROP_DEVICE)
+        }
+    )
 
     @JvmStatic
     val isABDevice: Boolean = SystemProperties.getBoolean(PROP_AB_DEVICE, false)
 
     @JvmStatic
-    val releaseType: String = SystemProperties.get(PROP_RELEASE_TYPE)
+    val releaseType: String = SystemProperties.get("ro.infinity.buildtype").ifEmpty {
+        SystemProperties.get(PROP_RELEASE_TYPE)
+    }
 
     // Mutable at runtime
     @JvmStatic
@@ -64,5 +73,7 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
 
     @JvmStatic
     val updaterUri: String
-        get() = SystemProperties.get(PROP_UPDATER_URI, "")
+        get() = SystemProperties.get("infinity.updater.uri").ifEmpty {
+            SystemProperties.get(PROP_UPDATER_URI, "")
+        }
 }

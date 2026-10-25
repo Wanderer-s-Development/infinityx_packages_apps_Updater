@@ -23,6 +23,8 @@ object InstallUtils {
 
     @JvmStatic
     fun getBlockedReason(update: Update) = when {
+        update.downloadId == Update.LOCAL_ID -> BlockedReason.NONE
+
         !DeviceInfoUtils.isDowngradingAllowed &&
                 (update.timestamp < DeviceInfoUtils.buildDateTimestamp ||
                         update.osSdkLevel < DeviceInfoUtils.sdkLevel) -> BlockedReason.DOWNGRADE

@@ -51,6 +51,19 @@
                 <category android:name="com.android.settings.SHORTCUT" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:scheme="content" android:mimeType="application/octet-stream" android:pathPattern=".*\\.zip" />
+                <data android:scheme="file" android:mimeType="application/octet-stream" android:pathPattern=".*\\.zip" />
+            </intent-filter>
         </activity>
 
         <service

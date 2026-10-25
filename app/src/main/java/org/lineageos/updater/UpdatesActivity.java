@@ -79,6 +79,23 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
             }
         });
 
+        handleIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleIntent(intent);
+    }
+
+    private void handleIntent(Intent intent) {
+        if (intent == null) {
+            return;
+        }
+        if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null) {
+            mUpdateImporter.onPicked(intent.getData());
+        }
     }
 
     @Override
@@ -163,6 +180,8 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
                     .show();
             return;
         }
+
+        notifyControllerStateChanged();
 
         new AlertDialog.Builder(this)
                 .setTitle(R.string.local_update_import_success_title)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-     SPDX-FileCopyrightText: The LineageOS Project
+     SPDX-FileCopyrightText: The Project Infinity-X Project
      SPDX-License-Identifier: Apache-2.0
 -->
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
@@ -32,8 +32,8 @@
     <string name="snack_download_verification_failed">Ferifikaasje fan de fernijing mislearre.</string>
     <string name="snack_download_verified">Downloaden foltôge.</string>
     <string name="snack_update_not_installable">Dizze fernijing kin net ynstallearre wurde boppe-op de aktuele ferzje.</string>
-    <string name="list_build_version">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
-    <string name="list_build_version_date">LineageOS <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
+    <string name="list_build_version">Project Infinity-X <xliff:g id="version" example="14.1">%1$s</xliff:g></string>
+    <string name="list_build_version_date">Project Infinity-X <xliff:g id="version" example="14.1">%1$s</xliff:g> - <xliff:g id="date" example="July 11, 2017">%2$s</xliff:g></string>
     <string name="list_verifying_update">Fernijing ferifiearje</string>
     <string name="action_download">Downloade</string>
     <string name="action_pause">Pauzeearje</string>

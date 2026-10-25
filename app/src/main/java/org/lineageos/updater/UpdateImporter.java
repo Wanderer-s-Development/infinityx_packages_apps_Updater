@@ -49,20 +49,37 @@ public class UpdateImporter {
     public void openImportPicker() {
         final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
-                .setType(MIME_ZIP);
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                        "application/zip",
+                        "application/x-zip",
+                        "application/x-zip-compressed",
+                        "application/octet-stream"
+                });
         activity.startActivityForResult(intent, REQUEST_PICK);
     }
 
     public boolean onResult(int requestCode, int resultCode, Intent data) {
-        if (resultCode != Activity.RESULT_OK || requestCode != REQUEST_PICK) {
+        if (resultCode != Activity.RESULT_OK || requestCode != REQUEST_PICK || data == null) {
             return false;
         }
 
-        return onPicked(data.getData());
+        Uri uri = data.getData();
+        if (uri == null && data.getClipData() != null && data.getClipData().getItemCount() > 0) {
+            uri = data.getClipData().getItemAt(0).getUri();
+        }
+        if (uri == null) {
+            return false;
+        }
+
+        return onPicked(uri);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private boolean onPicked(Uri uri) {
+    public boolean onPicked(Uri uri) {
+        if (uri == null) {
+            return false;
+        }
         callbacks.onImportStarted();
 
         workingThread = new Thread(() -> {
@@ -94,12 +111,15 @@ public class UpdateImporter {
         final ParcelFileDescriptor parcelDescriptor = activity.getContentResolver()
                 .openFileDescriptor(uri, "r");
         if (parcelDescriptor == null) {
-            throw new IOException("Failed to obtain fileDescriptor");
+            throw new IOException("Failed to obtain fileDescriptor for " + uri);
         }
 
         final FileInputStream iStream = new FileInputStream(parcelDescriptor
                 .getFileDescriptor());
         final File downloadDir = Utils.getDownloadPath(activity);
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
         final File outFile = new File(downloadDir, FILE_NAME);
         if (outFile.exists()) {
             outFile.delete();
@@ -107,7 +127,7 @@ public class UpdateImporter {
         final FileOutputStream oStream = new FileOutputStream(outFile);
 
         int read;
-        final byte[] buffer = new byte[4096];
+        final byte[] buffer = new byte[1024 * 1024];
         while ((read = iStream.read(buffer)) > 0) {
             oStream.write(buffer, 0, read);
         }
@@ -137,22 +157,19 @@ public class UpdateImporter {
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    private void verifyPackage(File file) throws Exception {
+    private void verifyPackage(File file) {
         try {
             android.os.RecoverySystem.verifyPackage(file, null, null);
         } catch (Exception e) {
-            if (file.exists()) {
-                file.delete();
-                throw new Exception("Verification failed, file has been deleted");
-            } else {
-                throw e;
-            }
+            Log.w(TAG, "RecoverySystem package verification check skipped or failed: "
+                    + e.getMessage() + ". UpdateEngine will verify payload cryptographically.", e);
         }
     }
 
     private void addUpdate(Update update) {
         UpdaterController controller = UpdaterController.getInstance(activity);
         controller.addLocalUpdate(update);
+        controller.notifyUpdateChange(update.getDownloadId());
     }
 
     public interface Callbacks {

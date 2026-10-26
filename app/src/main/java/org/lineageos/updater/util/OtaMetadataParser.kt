@@ -24,18 +24,19 @@ class OtaMetadataParser @Throws(IOException::class) constructor(file: File) {
         var parsedIsABUpdate = true
 
         ZipFile(file).use { zip ->
+            val hasPayload = zip.getEntry("payload.bin") != null
             val pbEntry = zip.getEntry(METADATA_PROTO_NAME)
             if (pbEntry != null) {
                 val metadata = zip.getInputStream(pbEntry).use { input ->
                     OtaMetadata.parseFrom(input.readBytes())
                 }
-                parsedIsABUpdate = when (metadata.type) {
+                parsedIsABUpdate = hasPayload || when (metadata.type) {
                     OtaMetadata.AB -> true
                     OtaMetadata.BLOCK -> false
                     else -> true
                 }
                 val postcondition = metadata.postcondition
-                parsedSdkLevel = postcondition.sdkLevel.toInt()
+                parsedSdkLevel = postcondition.sdkLevel.toIntOrNull() ?: 35
                 parsedSecurityPatchLevel = postcondition.securityPatchLevel
                 parsedTimestamp = postcondition.timestamp
             } else {
@@ -45,12 +46,12 @@ class OtaMetadataParser @Throws(IOException::class) constructor(file: File) {
                     zip.getInputStream(txtEntry).use { input ->
                         props.load(input)
                     }
-                    parsedIsABUpdate = props.getProperty("ota-type", "AB") == "AB"
+                    parsedIsABUpdate = hasPayload || props.getProperty("ota-type", "AB") == "AB"
                     parsedSdkLevel = props.getProperty("post-sdk-level")?.toIntOrNull() ?: 35
                     parsedSecurityPatchLevel = props.getProperty("post-security-patch-level") ?: ""
                     parsedTimestamp = props.getProperty("post-timestamp")?.toLongOrNull()
                         ?: (System.currentTimeMillis() / 1000)
-                } else if (zip.getEntry("payload.bin") != null) {
+                } else if (hasPayload) {
                     parsedIsABUpdate = true
                 } else {
                     throw IOException("No valid OTA metadata found in ${zip.name}")

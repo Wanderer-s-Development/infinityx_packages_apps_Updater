@@ -191,4 +191,9 @@
     <string name="local_update_import_success_message">Build date: <xliff:g id="build_date" example="Apr 27">%1$s</xliff:g>\n\nTap the imported update to view available actions.</string>
     <string name="local_update_import_failure">Failed to import local update</string>
     <string name="local_update_name">Local update</string>
+    <string name="local_update_import_err_open">Cannot open the selected file. If you selected the file using a third-party app, please select it using the built-in system Files picker.</string>
+    <string name="local_update_import_err_storage_space">Insufficient storage space.\n\nThe update requires %1$s, but only %2$s is available in internal storage. Please free up space and try again.</string>
+    <string name="local_update_import_err_storage_perm">Cannot write to update directory (%1$s). Please ensure permissions are granted.</string>
+    <string name="local_update_import_err_invalid_ota">The selected file is not a valid Android A/B OTA update package (metadata or payload.bin missing).</string>
+    <string name="local_update_import_err_copy">Error copying update file: %1$s</string>
 </resources>

@@ -35,7 +35,18 @@ public class Utils {
     }
 
     public static File getDownloadPath(Context context) {
-        return new File(context.getString(R.string.download_path));
+        File downloadDir = new File(context.getString(R.string.download_path));
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
+        if (!downloadDir.canWrite()) {
+            File fallback = new File("/data/ota_package/");
+            if (fallback.exists() && fallback.canWrite()) {
+                Log.w(TAG, "Configured download path " + downloadDir + " unwritable; falling back to " + fallback);
+                return fallback;
+            }
+        }
+        return downloadDir;
     }
 
     public static void triggerUpdate(Context context, String downloadId) {

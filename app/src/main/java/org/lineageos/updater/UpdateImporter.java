@@ -8,8 +8,11 @@ package org.lineageos.updater;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
+import android.text.format.Formatter;
 import android.util.Log;
 
 import org.lineageos.updater.controller.UpdaterController;
@@ -20,6 +23,7 @@ import org.lineageos.updater.util.OtaMetadataParser;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -50,6 +54,7 @@ public class UpdateImporter {
         final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
                 .addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("*/*")
+                .putExtra(Intent.EXTRA_LOCAL_ONLY, true)
                 .putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
                         "application/zip",
                         "application/x-zip",
@@ -90,7 +95,7 @@ public class UpdateImporter {
 
                 final Update update = buildLocalUpdate(importedFile);
                 addUpdate(update);
-                activity.runOnUiThread(() -> callbacks.onImportCompleted(update));
+                activity.runOnUiThread(() -> callbacks.onImportCompleted(update, null));
             } catch (Exception e) {
                 Log.e(TAG, "Failed to import update package", e);
                 // Do not store invalid update
@@ -98,7 +103,10 @@ public class UpdateImporter {
                     importedFile.delete();
                 }
 
-                activity.runOnUiThread(() -> callbacks.onImportCompleted(null));
+                final String errorMsg = (e.getMessage() != null && !e.getMessage().isEmpty())
+                        ? e.getMessage()
+                        : activity.getString(R.string.local_update_import_failure);
+                activity.runOnUiThread(() -> callbacks.onImportCompleted(null, errorMsg));
             }
         });
         workingThread.start();
@@ -108,33 +116,75 @@ public class UpdateImporter {
     @SuppressLint("SetWorldReadable")
     @SuppressWarnings("ResultOfMethodCallIgnored")
     private File importFile(Uri uri) throws IOException {
-        final ParcelFileDescriptor parcelDescriptor = activity.getContentResolver()
-                .openFileDescriptor(uri, "r");
-        if (parcelDescriptor == null) {
-            throw new IOException("Failed to obtain fileDescriptor for " + uri);
+        ParcelFileDescriptor parcelDescriptor = null;
+        try {
+            parcelDescriptor = activity.getContentResolver().openFileDescriptor(uri, "r");
+        } catch (SecurityException | FileNotFoundException e) {
+            Log.e(TAG, "Failed to open file descriptor for URI: " + uri, e);
+            throw new IOException(activity.getString(R.string.local_update_import_err_open), e);
         }
 
-        final FileInputStream iStream = new FileInputStream(parcelDescriptor
-                .getFileDescriptor());
+        if (parcelDescriptor == null) {
+            throw new IOException(activity.getString(R.string.local_update_import_err_open));
+        }
+
+        long fileSize = -1;
+        try (Cursor cursor = activity.getContentResolver().query(uri,
+                new String[]{OpenableColumns.SIZE}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (sizeIndex != -1) {
+                    fileSize = cursor.getLong(sizeIndex);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (fileSize <= 0) {
+            fileSize = parcelDescriptor.getStatSize();
+        }
+
         final File downloadDir = Utils.getDownloadPath(activity);
         if (!downloadDir.exists()) {
             downloadDir.mkdirs();
         }
+        if (!downloadDir.canWrite()) {
+            parcelDescriptor.close();
+            throw new IOException(activity.getString(R.string.local_update_import_err_storage_perm,
+                    downloadDir.getAbsolutePath()));
+        }
+
+        long usableSpace = downloadDir.getUsableSpace();
+        if (fileSize > 0 && usableSpace < fileSize + (100L * 1024 * 1024)) {
+            parcelDescriptor.close();
+            String reqStr = Formatter.formatFileSize(activity, fileSize);
+            String availStr = Formatter.formatFileSize(activity, usableSpace);
+            throw new IOException(activity.getString(R.string.local_update_import_err_storage_space,
+                    reqStr, availStr));
+        }
+
         final File outFile = new File(downloadDir, FILE_NAME);
         if (outFile.exists()) {
             outFile.delete();
         }
-        final FileOutputStream oStream = new FileOutputStream(outFile);
 
-        int read;
-        final byte[] buffer = new byte[1024 * 1024];
-        while ((read = iStream.read(buffer)) > 0) {
-            oStream.write(buffer, 0, read);
+        try (FileInputStream iStream = new FileInputStream(parcelDescriptor.getFileDescriptor());
+             FileOutputStream oStream = new FileOutputStream(outFile)) {
+            int read;
+            final byte[] buffer = new byte[1024 * 1024];
+            while ((read = iStream.read(buffer)) > 0) {
+                oStream.write(buffer, 0, read);
+            }
+            oStream.flush();
+        } catch (IOException e) {
+            if (outFile.exists()) {
+                outFile.delete();
+            }
+            throw new IOException(activity.getString(R.string.local_update_import_err_copy,
+                    e.getMessage()), e);
+        } finally {
+            parcelDescriptor.close();
         }
-        oStream.flush();
-        oStream.close();
-        iStream.close();
-        parcelDescriptor.close();
 
         outFile.setReadable(true, false);
 
@@ -142,7 +192,14 @@ public class UpdateImporter {
     }
 
     private Update buildLocalUpdate(File file) throws IOException {
-        final OtaMetadataParser metadata = new OtaMetadataParser(file);
+        final OtaMetadataParser metadata;
+        try {
+            metadata = new OtaMetadataParser(file);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to parse OTA metadata from " + file, e);
+            throw new IOException(activity.getString(R.string.local_update_import_err_invalid_ota), e);
+        }
+
         final String name = activity.getString(R.string.local_update_name);
         return new Update.Builder()
             .setName(name)
@@ -175,6 +232,10 @@ public class UpdateImporter {
     public interface Callbacks {
         void onImportStarted();
 
-        void onImportCompleted(Update update);
+        default void onImportCompleted(Update update) {
+            onImportCompleted(update, null);
+        }
+
+        void onImportCompleted(Update update, String errorMessage);
     }
 }

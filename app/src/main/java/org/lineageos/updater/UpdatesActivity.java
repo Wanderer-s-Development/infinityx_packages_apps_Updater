@@ -166,16 +166,19 @@ public class UpdatesActivity extends UpdatesScaffoldActivity implements UpdateIm
     }
 
     @Override
-    public void onImportCompleted(Update update) {
+    public void onImportCompleted(Update update, String errorMessage) {
         if (importDialog != null) {
             importDialog.dismiss();
             importDialog = null;
         }
 
         if (update == null) {
+            String message = (errorMessage != null && !errorMessage.isEmpty())
+                    ? errorMessage
+                    : getString(R.string.local_update_import_failure);
             new AlertDialog.Builder(this)
                     .setTitle(R.string.local_update_import)
-                    .setMessage(R.string.local_update_import_failure)
+                    .setMessage(message)
                     .setPositiveButton(android.R.string.ok, null)
                     .show();
             return;

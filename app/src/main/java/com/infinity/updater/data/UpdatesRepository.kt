@@ -100,7 +100,7 @@ class UpdatesRepository(
             return false
         }
 
-        if (update.osSdkLevel < DeviceInfoUtils.sdkLevel) {
+        if (update.osSdkLevel > 0 && update.osSdkLevel < DeviceInfoUtils.sdkLevel) {
             Log.d(TAG, "${update.name} is older than current Android version")
             return false
         }

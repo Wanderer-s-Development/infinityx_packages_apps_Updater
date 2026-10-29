@@ -57,27 +57,36 @@ data class InfinityResponse(
 @Serializable
 @JsonIgnoreUnknownKeys
 data class InfinityUpdateItem(
-    @SerialName("filename") val filename: String,
-    @SerialName("download") val download: String,
+    @SerialName("datetime") val datetime: Long = 0L,
+    @SerialName("filename") val filename: String = "",
+    @SerialName("download") val download: String = "",
+    @SerialName("url") val url: String = "",
     @SerialName("timestamp") val timestamp: Long = 0L,
     @SerialName("md5") val md5: String? = null,
     @SerialName("sha256") val sha256: String? = null,
+    @SerialName("id") val id: String? = null,
     @SerialName("size") val size: Long = 0L,
     @SerialName("version") val version: String = "",
+    @SerialName("romtype") val romtype: String? = null,
+    @SerialName("os_sdk_level") val osSdkLevel: Int? = null,
 )
 
 fun InfinityResponse.toNetworkUpdates(defaultType: String): List<NetworkUpdate> = response.map { item ->
+    val time = if (item.timestamp > 0) item.timestamp else item.datetime
+    val fileUrl = item.download.ifEmpty { item.url }
+    val hash = item.sha256 ?: item.id ?: item.md5 ?: item.filename
     NetworkUpdate(
-        datetime = item.timestamp,
+        datetime = time,
         files = listOf(
             NetworkUpdateFile(
                 filename = item.filename,
-                sha256 = item.sha256 ?: item.md5 ?: item.filename,
+                sha256 = hash,
                 size = item.size,
-                url = item.download,
+                url = fileUrl,
+                osSdkLevel = item.osSdkLevel ?: DeviceInfoUtils.sdkLevel,
             )
         ),
-        type = defaultType,
+        type = item.romtype?.uppercase() ?: defaultType,
         version = item.version,
     )
 }

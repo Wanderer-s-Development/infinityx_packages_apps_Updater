@@ -12,7 +12,7 @@
 
     <!-- Directory where the update files will be downloaded and stored.
          WARNING: The application can and will delete any unknown file. -->
-    <string name="download_path" translatable="false">/data/infinity_updates/</string>
+    <string name="download_path" translatable="false">/data/lineage_updates/</string>
 
     <!-- Directory where the downloads will be exported to.
          The path is relative to the root of the external storage.-->
@@ -24,7 +24,7 @@
           {type} - Build type
           {incr} - Incremental version
     -->
-    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/ProjectInfinity-X/official_devices/17/vanilla/{device}.json</string>
+    <string name="updater_server_url" translatable="false">https://raw.githubusercontent.com/Wanderer-s-Development/infinityx-ota/main/{device}.json</string>
 
     <string name="verification_failed_notification">Verification failed</string>
     <string name="verifying_download_notification">Verifying update</string>
@@ -91,7 +91,7 @@
     <string name="menu_stream_updates_summary">Install updates while downloading. Disable to save update packages for export.</string>
     <string name="menu_delete_update">Delete</string>
     <string name="menu_export_update">Export update</string>
-    <string name="menu_changelog_url" translatable="false">https://projectinfinityx.com</string>
+    <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/Wanderer-s-Development/infinityx-ota/main/changelog.txt</string>
     <string name="menu_view_downloads">View on <xliff:g id="brand_name" example="LineageOS">%1$s</xliff:g> Downloads</string>
     <string name="menu_metered_network_warning">Metered network warning</string>
     <string name="menu_metered_network_warning_summary">Warn before downloading over mobile data</string>
@@ -117,6 +117,8 @@
     <string name="build_date">Build date</string>
     <string name="security_update">Security update</string>
     <string name="show_changelog">Recent changes</string>
+    <string name="changelog_loading">Loading changelog&#8230;</string>
+    <string name="changelog_error">Unable to load changelog</string>
     <string name="report_issues">Report issues</string>
     <string name="report_issue_url" translatable="false">https://github.com/ProjectInfinity-X</string>
     <string name="header_review_updates">Review updates and recent changes on</string>

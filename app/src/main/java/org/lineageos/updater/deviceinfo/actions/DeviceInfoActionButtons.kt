@@ -16,6 +16,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +37,17 @@ import org.lineageos.updater.deviceinfo.DeviceInfoUtils
 @Composable
 fun DeviceInfoActionButtons(modifier: Modifier = Modifier) {
     val context = LocalContext.current
+    var showChangelogDialog by remember { mutableStateOf(false) }
+
+    if (showChangelogDialog) {
+        val url = context.getString(R.string.menu_changelog_url).replace("{device}", DeviceInfoUtils.device)
+        ChangelogDialog(
+            url = url,
+            onDismissRequest = {
+                showChangelogDialog = false
+            },
+        )
+    }
 
     Row(
         modifier = modifier
@@ -52,9 +67,7 @@ fun DeviceInfoActionButtons(modifier: Modifier = Modifier) {
         )
         TextButton(
             onClick = {
-                val url = context.getString(R.string.menu_changelog_url, DeviceInfoUtils.device)
-                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                context.startActivity(intent)
+                showChangelogDialog = true
             },
             colors = buttonColors,
         ) {

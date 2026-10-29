@@ -60,11 +60,17 @@ object DeviceInfoUtils : SettingsLibDeviceInfoUtils() {
     // Mutable at runtime
     @JvmStatic
     val isDowngradingAllowed: Boolean
-        get() = SystemProperties.getBoolean(PROP_UPDATER_ALLOW_DOWNGRADING, false)
+        get() = SystemProperties.getBoolean(
+            "infinity.updater.allow_downgrading",
+            SystemProperties.getBoolean(PROP_UPDATER_ALLOW_DOWNGRADING, false)
+        )
 
     @JvmStatic
     val isMajorUpdateAllowed: Boolean
-        get() = SystemProperties.getBoolean(PROP_ALLOW_MAJOR_UPGRADES, false)
+        get() = SystemProperties.getBoolean(
+            "infinity.updater.allow_major_upgrades",
+            SystemProperties.getBoolean(PROP_ALLOW_MAJOR_UPGRADES, false)
+        )
 
     @JvmStatic
     var isRecoveryUpdateEnabled: Boolean

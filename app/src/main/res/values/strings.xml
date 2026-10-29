@@ -12,7 +12,7 @@
 
     <!-- Directory where the update files will be downloaded and stored.
          WARNING: The application can and will delete any unknown file. -->
-    <string name="download_path" translatable="false">/data/lineage_updates/</string>
+    <string name="download_path" translatable="false">/data/infinity_updates/</string>
 
     <!-- Directory where the downloads will be exported to.
          The path is relative to the root of the external storage.-->
@@ -92,7 +92,7 @@
     <string name="menu_delete_update">Delete</string>
     <string name="menu_export_update">Export update</string>
     <string name="menu_changelog_url" translatable="false">https://raw.githubusercontent.com/Wanderer-s-Development/infinityx-ota/main/changelog.txt</string>
-    <string name="menu_view_downloads">View on <xliff:g id="brand_name" example="LineageOS">%1$s</xliff:g> Downloads</string>
+    <string name="menu_view_downloads">View on <xliff:g id="brand_name" example="Project Infinity-X">%1$s</xliff:g> Downloads</string>
     <string name="menu_metered_network_warning">Metered network warning</string>
     <string name="menu_metered_network_warning_summary">Warn before downloading over mobile data</string>
     <string name="menu_ab_perf_mode">Prioritize update process</string>
@@ -134,7 +134,7 @@
     <string name="list_security_update">Security update: <xliff:g id="date" example="Jan 2026">%1$s</xliff:g></string>
     <string name="list_major_android_upgrade">Major Android upgrade</string>
     <string name="list_full_install">Full install: Safe to install over any previous build</string>
-    <string name="list_major_upgrade_recovery_install">Major <xliff:g id="brand_name" example="LineageOS">%1$s</xliff:g> version upgrades must be installed manually. Refer to your device\'s guide to continue.</string>
+    <string name="list_major_upgrade_recovery_install">Major <xliff:g id="brand_name" example="Project Infinity-X">%1$s</xliff:g> version upgrades must be installed manually. Refer to your device\'s guide to continue.</string>
     <string name="list_downgrade_blocked">This build is older than the installed system and cannot be applied.</string>
     <string name="list_download_progress_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> of <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g></string>
     <string name="list_download_progress_eta_newer"><xliff:g id="filesize_without_unit" example="12.2">%1$s</xliff:g> of <xliff:g id="filesize_without_unit" example="310 MB">%2$s</xliff:g> (<xliff:g id="eta" example="3 minutes left">%3$s</xliff:g>)</string>

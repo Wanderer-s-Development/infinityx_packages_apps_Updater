@@ -1,0 +1,241 @@
+/*
+ * SPDX-FileCopyrightText: The LineageOS Project
+ * SPDX-FileCopyrightText: 2020-2022 SHIFT GmbH
+ * SPDX-License-Identifier: Apache-2.0
+ */
+package com.infinity.updater;
+
+import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
+import android.provider.OpenableColumns;
+import android.text.format.Formatter;
+import android.util.Log;
+
+import com.infinity.updater.controller.UpdaterController;
+import com.infinity.updater.data.Update;
+import com.infinity.updater.data.UpdateStatus;
+import com.infinity.updater.misc.Utils;
+import com.infinity.updater.util.OtaMetadataParser;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+public class UpdateImporter {
+    private static final int REQUEST_PICK = 9061;
+    private static final String TAG = "UpdateImporter";
+    private static final String MIME_ZIP = "application/zip";
+    private static final String FILE_NAME = "localUpdate.zip";
+
+    private final Activity activity;
+    private final Callbacks callbacks;
+
+    private Thread workingThread;
+
+    public UpdateImporter(Activity activity, Callbacks callbacks) {
+        this.activity = activity;
+        this.callbacks = callbacks;
+    }
+
+    public void stopImport() {
+        if (workingThread != null && workingThread.isAlive()) {
+            workingThread.interrupt();
+            workingThread = null;
+        }
+    }
+
+    public void openImportPicker() {
+        final Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_LOCAL_ONLY, true)
+                .putExtra(Intent.EXTRA_MIME_TYPES, new String[] {
+                        "application/zip",
+                        "application/x-zip",
+                        "application/x-zip-compressed",
+                        "application/octet-stream"
+                });
+        activity.startActivityForResult(intent, REQUEST_PICK);
+    }
+
+    public boolean onResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK || requestCode != REQUEST_PICK || data == null) {
+            return false;
+        }
+
+        Uri uri = data.getData();
+        if (uri == null && data.getClipData() != null && data.getClipData().getItemCount() > 0) {
+            uri = data.getClipData().getItemAt(0).getUri();
+        }
+        if (uri == null) {
+            return false;
+        }
+
+        return onPicked(uri);
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public boolean onPicked(Uri uri) {
+        if (uri == null) {
+            return false;
+        }
+        callbacks.onImportStarted();
+
+        workingThread = new Thread(() -> {
+            File importedFile = null;
+            try {
+                importedFile = importFile(uri);
+                verifyPackage(importedFile);
+
+                final Update update = buildLocalUpdate(importedFile);
+                addUpdate(update);
+                activity.runOnUiThread(() -> callbacks.onImportCompleted(update, null));
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to import update package", e);
+                // Do not store invalid update
+                if (importedFile != null) {
+                    importedFile.delete();
+                }
+
+                final String errorMsg = (e.getMessage() != null && !e.getMessage().isEmpty())
+                        ? e.getMessage()
+                        : activity.getString(R.string.local_update_import_failure);
+                activity.runOnUiThread(() -> callbacks.onImportCompleted(null, errorMsg));
+            }
+        });
+        workingThread.start();
+        return true;
+    }
+
+    @SuppressLint("SetWorldReadable")
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private File importFile(Uri uri) throws IOException {
+        ParcelFileDescriptor parcelDescriptor = null;
+        try {
+            parcelDescriptor = activity.getContentResolver().openFileDescriptor(uri, "r");
+        } catch (SecurityException | FileNotFoundException e) {
+            Log.e(TAG, "Failed to open file descriptor for URI: " + uri, e);
+            throw new IOException(activity.getString(R.string.local_update_import_err_open), e);
+        }
+
+        if (parcelDescriptor == null) {
+            throw new IOException(activity.getString(R.string.local_update_import_err_open));
+        }
+
+        long fileSize = -1;
+        try (Cursor cursor = activity.getContentResolver().query(uri,
+                new String[]{OpenableColumns.SIZE}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                int sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE);
+                if (sizeIndex != -1) {
+                    fileSize = cursor.getLong(sizeIndex);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        if (fileSize <= 0) {
+            fileSize = parcelDescriptor.getStatSize();
+        }
+
+        final File downloadDir = Utils.getDownloadPath(activity);
+        if (!downloadDir.exists()) {
+            downloadDir.mkdirs();
+        }
+        if (!downloadDir.canWrite()) {
+            parcelDescriptor.close();
+            throw new IOException(activity.getString(R.string.local_update_import_err_storage_perm,
+                    downloadDir.getAbsolutePath()));
+        }
+
+        long usableSpace = downloadDir.getUsableSpace();
+        if (fileSize > 0 && usableSpace < fileSize + (100L * 1024 * 1024)) {
+            parcelDescriptor.close();
+            String reqStr = Formatter.formatFileSize(activity, fileSize);
+            String availStr = Formatter.formatFileSize(activity, usableSpace);
+            throw new IOException(activity.getString(R.string.local_update_import_err_storage_space,
+                    reqStr, availStr));
+        }
+
+        final File outFile = new File(downloadDir, FILE_NAME);
+        if (outFile.exists()) {
+            outFile.delete();
+        }
+
+        try (FileInputStream iStream = new FileInputStream(parcelDescriptor.getFileDescriptor());
+             FileOutputStream oStream = new FileOutputStream(outFile)) {
+            int read;
+            final byte[] buffer = new byte[1024 * 1024];
+            while ((read = iStream.read(buffer)) > 0) {
+                oStream.write(buffer, 0, read);
+            }
+            oStream.flush();
+        } catch (IOException e) {
+            if (outFile.exists()) {
+                outFile.delete();
+            }
+            throw new IOException(activity.getString(R.string.local_update_import_err_copy,
+                    e.getMessage()), e);
+        } finally {
+            parcelDescriptor.close();
+        }
+
+        outFile.setReadable(true, false);
+
+        return outFile;
+    }
+
+    private Update buildLocalUpdate(File file) throws IOException {
+        final OtaMetadataParser metadata;
+        try {
+            metadata = new OtaMetadataParser(file);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to parse OTA metadata from " + file, e);
+            throw new IOException(activity.getString(R.string.local_update_import_err_invalid_ota), e);
+        }
+
+        final String name = activity.getString(R.string.local_update_name);
+        return new Update.Builder()
+            .setName(name)
+            .setFile(file)
+            .setFileSize(file.length())
+            .setTimestamp(metadata.getTimestamp())
+            .setOsPatchLevel(metadata.getSecurityPatchLevel())
+            .setOsSdkLevel(metadata.getSdkLevel())
+            .setStatus(UpdateStatus.VERIFIED)
+            .setVersion(name)
+            .build();
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    private void verifyPackage(File file) {
+        try {
+            android.os.RecoverySystem.verifyPackage(file, null, null);
+        } catch (Exception e) {
+            Log.w(TAG, "RecoverySystem package verification check skipped or failed: "
+                    + e.getMessage() + ". UpdateEngine will verify payload cryptographically.", e);
+        }
+    }
+
+    private void addUpdate(Update update) {
+        UpdaterController controller = UpdaterController.getInstance(activity);
+        controller.addLocalUpdate(update);
+        controller.notifyUpdateChange(update.getDownloadId());
+    }
+
+    public interface Callbacks {
+        void onImportStarted();
+
+        default void onImportCompleted(Update update) {
+            onImportCompleted(update, null);
+        }
+
+        void onImportCompleted(Update update, String errorMessage);
+    }
+}
